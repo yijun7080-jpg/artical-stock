@@ -2,11 +2,12 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
+import time
 
-st.set_page_config(page_title="AI 에이전트 모의 주식 투자", page_icon="📈", layout="wide")
+st.set_page_config(page_title="AI 자동 주식 모의투자 봇", page_icon="🤖", layout="wide")
 
-st.title("🤖 고1 맞춤형 AI 에이전트 주식 모의투자 실시간 대시보드")
-st.markdown("외부 서버에서 24시간 안정적으로 실행되는 나만의 AI 주식 시뮬레이터입니다!")
+st.title("🤖 AI 에이전트 주식 자동 매매 모의투자 대시보드")
+st.markdown("AI가 실시간 뉴스와 주가를 분석하여 자동으로 주식을 사고파는 시뮬레이터입니다.")
 
 # 세션 상태 초기화
 if 'cash' not in st.session_state:
@@ -17,16 +18,15 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 
 # 사이드바 설정
-st.sidebar.header("⚙️ 투자 설정 패널")
-ticker = st.sidebar.text_input("거래 종목 코드 (미국: AAPL, TSLA / 한국: 005930.KS)", value="AAPL")
+st.sidebar.header("⚙️ 자동 매매 설정 패널")
+ticker = st.sidebar.text_input("거래 종목 코드", value="AAPL")
 initial_cash = st.sidebar.number_input("초기 시드머니 설정", value=100000.0, step=10000.0)
 
-# 시드머니 변경 반영
-if st.sidebar.button("시드머니 초기화/적용"):
+if st.sidebar.button("시드머니 초기화"):
     st.session_state.cash = initial_cash
     st.session_state.shares = 0
     st.session_state.history = []
-    st.success("시드머니가 초기화되었습니다!")
+    st.success("지갑이 초기화되었습니다!")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📊 현재 지갑 현황")
@@ -34,9 +34,9 @@ st.sidebar.write(f"현금 잔고: `${st.session_state.cash:,.2f}`")
 st.sidebar.write(f"보유 주식수: `{st.session_state.shares}주`")
 
 # 메인 화면: 실시간 주가 데이터 로드
-st.subheader(f"📈 [{ticker.upper()}] 실시간 주가 흐름")
+st.subheader(f"📈 [{ticker.upper()}] 실시간 주가 흐름 및 자동 매매 상태")
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def load_data(symbol):
     df = yf.download(symbol, period="1mo", interval="1d", progress=False)
     return df
@@ -54,59 +54,58 @@ try:
         st.metric(label=f"{ticker.upper()} 현재가", value=f"${current_price:,.2f}")
         st.line_chart(df['Close'])
     else:
-        st.error("종목 코드를 다시 확인해주세요. 데이터를 불러오지 못했습니다.")
+        st.error("종목 코드를 확인해주세요.")
         current_price = 0
 except Exception as e:
-    st.error(f"데이터 로드 중 에러 발생: {e}")
+    st.error(f"데이터 에러: {e}")
     current_price = 0
 
 st.markdown("---")
 
-# LLM 에이전트 참고 데이터 및 프롬프트 주입 영역
-st.subheader("🧠 LLM 에이전트 참고 데이터 및 지시사항 주입")
+# LLM 에이전트 참고 데이터 영역
+st.subheader("🧠 AI 자동 매매 에이전트 설정")
 llm_context = st.text_area(
-    "AI에게 전달할 참고 데이터 (예: 뉴스 기사 내용, 실적 발표 내용 등)",
-    placeholder="여기에 뉴스를 붙여넣거나 에이전트가 참고할 힌트를 적어보세요..."
+    "AI가 매매 판단 시 참고할 뉴스/호재 데이터 입력",
+    placeholder="예: 오늘 애플 신제품 반응이 엄청나서 주가가 급등할 호재가 있음"
 )
 
-col1, col2 = st.columns(2)
+# 자동 매매 스위치 (체크박스)
+auto_trading = st.checkbox("🚀 AI 자동 매매 봇 실행하기 (체크하면 실시간으로 스스로 거래를 시작합니다)")
 
-with col1:
-    if st.button("🤖 AI 에이전트에게 판단 요청하기"):
-        if current_price > 0:
-            st.info(f"AI 에이전트 분석 중... (참고 데이터 길이: {len(llm_context)}자)")
-            if any(keyword in llm_context for keyword in ["호재", "상승", "매수", "급등", "성장"]):
-                st.success("🤖 AI 에이전트 의견: [매수 추천] 참고 데이터의 시장 분위기가 매우 긍정적입니다!")
-            else:
-                st.warning("🤖 AI 에이전트 의견: [관망/보류] 현재 데이터로는 확신이 부족합니다.")
-        else:
-            st.error("주가 데이터를 먼저 불러와 주세요.")
-
-with col2:
-    if st.button("💰 수동 매수 (1주)"):
-        if st.session_state.cash >= current_price and current_price > 0:
+# 자동 매매 로직 수행
+if auto_trading and current_price > 0:
+    st.info("🤖 AI 봇이 실시간으로 시장을 감시하며 자동 거래를 수행 중입니다...")
+    
+    # AI 판단 시뮬레이션
+    if any(keyword in llm_context for keyword in ["호재", "상승", "매수", "급등", "성장", "반응"]):
+        # 조건 맞으면 자동 매수 시도
+        if st.session_state.cash >= current_price:
             st.session_state.cash -= current_price
             st.session_state.shares += 1
-            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 매수 성공 (-${current_price:,.2f})"
+            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [자동 매수] 체결 완료 (-${current_price:,.2f})"
             st.session_state.history.append(log_msg)
             st.success(log_msg)
         else:
-            st.error("현금이 부족하거나 가격을 불러오지 못했습니다.")
-
-    if st.button("📉 수동 매도 (1주)"):
-        if st.session_state.shares > 0 and current_price > 0:
+            st.warning("⚠️ 현금이 부족하여 AI가 매수를 보류했습니다.")
+    else:
+        # 특별한 호재가 없으면 관망 또는 보유 중일 때 매도 테스트
+        if st.session_state.shares > 0 and "매도" in llm_context:
             st.session_state.cash += current_price
             st.session_state.shares -= 1
-            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 매도 성공 (+${current_price:,.2f})"
+            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [자동 매도] 체결 완료 (+${current_price:,.2f})"
             st.session_state.history.append(log_msg)
-            st.success(log_msg)
+            st.warning(log_msg)
         else:
-            st.error("보유 중인 주식이 없습니다.")
+            st.info("🤖 AI 의견: 현재 특별한 매매 시그널이 없어 관망 중입니다.")
+    
+    # 화면을 자동으로 갱신하여 실시간 느낌 부여 (5초 대기 후 새로고침)
+    time.sleep(5)
+    st.rerun()
 
 st.markdown("---")
-st.subheader("📝 실시간 거래 및 에이전트 로그")
+st.subheader("📝 실시간 자동 거래 로그")
 if st.session_state.history:
     for history in reversed(st.session_state.history):
         st.text(history)
 else:
-    st.write("아직 거래 기록이 없습니다.")
+    st.write("아직 거래 기록이 없습니다. 자동 매매 봇을 켜보세요!")
