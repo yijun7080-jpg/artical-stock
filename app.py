@@ -4,10 +4,10 @@ import pandas as pd
 from datetime import datetime
 import time
 
-st.set_page_config(page_title="AI 자동 주식 모의투자 봇", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="실시간 뉴스 연동 AI 자동 주식 봇", page_icon="🤖", layout="wide")
 
-st.title("🤖 AI 에이전트 주식 자동 매매 모의투자 대시보드")
-st.markdown("AI가 실시간 뉴스와 주가를 분석하여 자동으로 주식을 사고파는 시뮬레이터입니다.")
+st.title("🤖 실시간 뉴스 자동 수집 & AI 자동 매매 대시보드")
+st.markdown("AI가 인터넷을 통해 **실시간 최신 뉴스**를 직접 수집하고 분석하여 자동으로 주식을 사고파는 시뮬레이터입니다.")
 
 # 세션 상태 초기화
 if 'cash' not in st.session_state:
@@ -62,43 +62,65 @@ except Exception as e:
 
 st.markdown("---")
 
-# LLM 에이전트 참고 데이터 영역
-st.subheader("🧠 AI 자동 매매 에이전트 설정")
-llm_context = st.text_area(
-    "AI가 매매 판단 시 참고할 뉴스/호재 데이터 입력",
-    placeholder="예: 오늘 애플 신제품 반응이 엄청나서 주가가 급등할 호재가 있음"
-)
+# 실시간 뉴스 수집 함수
+def fetch_realtime_news(symbol):
+    try:
+        t = yf.Ticker(symbol)
+        news_list = t.news
+        headlines = []
+        if news_list:
+            for item in news_list[:5]: # 최신 뉴스 5개 가져오기
+                # yfinance 버전별 구조 차이 방어 코드
+                title = item.get('title') or item.get('content', {}).get('title', '')
+                if title:
+                    headlines.append(title)
+        return headlines
+    except Exception as e:
+        return [f"뉴스 수집 중 오류 발생: {e}"]
 
-# 자동 매매 스위치 (체크박스)
-auto_trading = st.checkbox("🚀 AI 자동 매매 봇 실행하기 (체크하면 실시간으로 스스로 거래를 시작합니다)")
+st.subheader("🌐 AI 실시간 뉴스 수집 및 분석 모니터")
+auto_trading = st.checkbox("🚀 실시간 뉴스 기반 AI 자동 매매 봇 실행하기")
+
+# 최신 뉴스 가져오기 시도
+current_headlines = fetch_realtime_news(ticker)
+
+st.write("**[AI가 실시간으로 수집한 최신 뉴스 헤드라인 목록]**")
+for idx, h in enumerate(current_headlines, 1):
+    st.text(f"{idx}. {h}")
 
 # 자동 매매 로직 수행
 if auto_trading and current_price > 0:
-    st.info("🤖 AI 봇이 실시간으로 시장을 감시하며 자동 거래를 수행 중입니다...")
+    st.info("🤖 AI가 실시간 뉴스를 분석하고 있습니다...")
     
-    # AI 판단 시뮬레이션
-    if any(keyword in llm_context for keyword in ["호재", "상승", "매수", "급등", "성장", "반응"]):
-        # 조건 맞으면 자동 매수 시도
+    # 뉴스 제목들을 하나로 합쳐서 키워드 분석
+    combined_news = " ".join(current_headlines).lower()
+    
+    # 긍정/부정 키워드 감지 (영어/한글 뉴스 대응)
+    bullish_keywords = ["surge", "up", "record", "growth", "high", "gain", "beat", "positive", "호재", "상승", "급등"]
+    bearish_keywords = ["fall", "drop", "down", "loss", "slump", "miss", "negative", "하락", "급락", "악재"]
+    
+    is_bullish = any(kw in combined_news for kw in bullish_keywords)
+    is_bearish = any(kw in combined_news for kw in bearish_keywords)
+    
+    if is_bullish and not is_bearish:
         if st.session_state.cash >= current_price:
             st.session_state.cash -= current_price
             st.session_state.shares += 1
-            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [자동 매수] 체결 완료 (-${current_price:,.2f})"
+            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [실시간 자동 매수] 호재 감지! 체결 완료 (-${current_price:,.2f})"
             st.session_state.history.append(log_msg)
             st.success(log_msg)
         else:
-            st.warning("⚠️ 현금이 부족하여 AI가 매수를 보류했습니다.")
+            st.warning("⚠️ 현금이 부족하여 매수를 보류했습니다.")
+    elif is_bearish and st.session_state.shares > 0:
+        st.session_state.cash += current_price
+        st.session_state.shares -= 1
+        log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [실시간 자동 매도] 악재 감지! 체결 완료 (+${current_price:,.2f})"
+        st.session_state.history.append(log_msg)
+        st.warning(log_msg)
     else:
-        # 특별한 호재가 없으면 관망 또는 보유 중일 때 매도 테스트
-        if st.session_state.shares > 0 and "매도" in llm_context:
-            st.session_state.cash += current_price
-            st.session_state.shares -= 1
-            log_msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🤖 [자동 매도] 체결 완료 (+${current_price:,.2f})"
-            st.session_state.history.append(log_msg)
-            st.warning(log_msg)
-        else:
-            st.info("🤖 AI 의견: 현재 특별한 매매 시그널이 없어 관망 중입니다.")
+        st.info("🤖 AI 의견: 수집된 뉴스에 특별한 매매 시그널이 없어 안전하게 관망 중입니다.")
     
-    # 화면을 자동으로 갱신하여 실시간 느낌 부여 (5초 대기 후 새로고침)
+    # 5초 간격으로 반복 실행하여 실시간성 부여
     time.sleep(5)
     st.rerun()
 
@@ -108,4 +130,4 @@ if st.session_state.history:
     for history in reversed(st.session_state.history):
         st.text(history)
 else:
-    st.write("아직 거래 기록이 없습니다. 자동 매매 봇을 켜보세요!")
+    st.write("아직 거래 기록이 없습니다. 상단의 자동 매매 봇을 켜보세요!")
