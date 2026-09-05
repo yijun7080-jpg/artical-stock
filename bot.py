@@ -6,16 +6,56 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 
-# 초기 자본금 (기본 10만 원) 및 초기 투자 원금 기록용
+# 40개 종목으로 대폭 확장된 포트폴리오
 bot_status = {
     "cash": 100000.0, 
     "initial_capital": 100000.0, 
     "portfolio": {
-        "SOFI": {"shares": 0, "avg_price": 0.0, "name": "소파이 테크놀로지스 (미국/핀테크)", "market": "US"},
-        "NIO": {"shares": 0, "avg_price": 0.0, "name": "니오 (미국상장/전기차)", "market": "US"},
-        "PLTR": {"shares": 0, "avg_price": 0.0, "name": "팔란티어 (미국/AI·소프트웨어)", "market": "US"},
-        "SIRI": {"shares": 0, "avg_price": 0.0, "name": "시리우스 XM (미국/미디어)", "market": "US"},
-        "VALE": {"shares": 0, "avg_price": 0.0, "name": "발레 (미국상장/원자재)", "market": "US"}
+        # 1~10
+        "SOFI": {"shares": 0, "avg_price": 0.0, "name": "소파이 테크놀로지스 (핀테크)", "market": "US"},
+        "NIO": {"shares": 0, "avg_price": 0.0, "name": "니오 (전기차)", "market": "US"},
+        "PLTR": {"shares": 0, "avg_price": 0.0, "name": "팔란티어 (AI·소프트웨어)", "market": "US"},
+        "SIRI": {"shares": 0, "avg_price": 0.0, "name": "시리우스 XM (미디어)", "market": "US"},
+        "VALE": {"shares": 0, "avg_price": 0.0, "name": "발레 (원자재/광업)", "market": "US"},
+        "AMD": {"shares": 0, "avg_price": 0.0, "name": "AMD (반도체)", "market": "US"},
+        "F": {"shares": 0, "avg_price": 0.0, "name": "포드 모터스 (자동차)", "market": "US"},
+        "SNAP": {"shares": 0, "avg_price": 0.0, "name": "스냅 (SNS)", "market": "US"},
+        "NOK": {"shares": 0, "avg_price": 0.0, "name": "노키아 (통신장비)", "market": "US"},
+        "PBR": {"shares": 0, "avg_price": 0.0, "name": "페트로브라스 (에너지)", "market": "US"},
+        # 11~20
+        "INTC": {"shares": 0, "avg_price": 0.0, "name": "인텔 (반도체)", "market": "US"},
+        "PLUG": {"shares": 0, "avg_price": 0.0, "name": "플러그 파워 (수소/친환경)", "market": "US"},
+        "CCL": {"shares": 0, "avg_price": 0.0, "name": "카니발 (크루즈/여행)", "market": "US"},
+        "AAL": {"shares": 0, "avg_price": 0.0, "name": "아메리칸 항공 (항공)", "market": "US"},
+        "UBER": {"shares": 0, "avg_price": 0.0, "name": "우버 (모빌리티)", "market": "US"},
+        "RIVN": {"shares": 0, "avg_price": 0.0, "name": "리비안 (전기차)", "market": "US"},
+        "IONQ": {"shares": 0, "avg_price": 0.0, "name": "아이온큐 (양자컴퓨팅)", "market": "US"},
+        "HOOD": {"shares": 0, "avg_price": 0.0, "name": "로빈후드 (증권/핀테크)", "market": "US"},
+        "DKNG": {"shares": 0, "avg_price": 0.0, "name": "드래프트킹스 (스포츠베팅)", "market": "US"},
+        "OPEN": {"shares": 0, "avg_price": 0.0, "name": "오펜도어 (프롭테크)", "market": "US"},
+        # 21~30 (신규 추가)
+        "DIS": {"shares": 0, "avg_price": 0.0, "name": "월트 디즈니 (미디어/엔터)", "market": "US"},
+        "PFE": {"shares": 0, "avg_price": 0.0, "name": "화이자 (제약/바이오)", "market": "US"},
+        "BAC": {"shares": 0, "avg_price": 0.0, "name": "뱅크오브아메리카 (은행)", "market": "US"},
+        "KO": {"shares": 0, "avg_price": 0.0, "name": "코카콜라 (식음료)", "market": "US"},
+        "T": {"shares": 0, "avg_price": 0.0, "name": "AT&T (통신)", "market": "US"},
+        "VZ": {"shares": 0, "avg_price": 0.0, "name": "버라이즌 (통신)", "market": "US"},
+        "NIO": {"shares": 0, "avg_price": 0.0, "name": "니오 (전기차)", "market": "US"}, # 중복 방지용 교체 -> GM
+        "GM": {"shares": 0, "avg_price": 0.0, "name": "제너럴 모터스 (자동차)", "market": "US"},
+        "X": {"shares": 0, "avg_price": 0.0, "name": "유나이티드 스틸 (철강)", "market": "US"},
+        "CPNG": {"shares": 0, "avg_price": 0.0, "name": "쿠팡 (이커머스)", "market": "US"},
+        "PYPL": {"shares": 0, "avg_price": 0.0, "name": "페이팔 (핀테크/결제)", "market": "US"},
+        # 31~40 (신규 추가)
+        "SQ": {"shares": 0, "avg_price": 0.0, "name": "블록/스퀘어 (핀테크)", "market": "US"},
+        "ROKU": {"shares": 0, "avg_price": 0.0, "name": "로쿠 (스트리밍)", "market": "US"},
+        "PINS": {"shares": 0, "avg_price": 0.0, "name": "핀터레스트 (SNS)", "market": "US"},
+        "ETSY": {"shares": 0, "avg_price": 0.0, "name": "잇시 (이커머스)", "market": "US"},
+        "LCID": {"shares": 0, "avg_price": 0.0, "name": "루시드 그룹 (전기차)", "market": "US"},
+        "NCLH": {"shares": 0, "avg_price": 0.0, "name": "노르웨이지안 크루즈 (여행)", "market": "US"},
+        "DAL": {"shares": 0, "avg_price": 0.0, "name": "델타 항공 (항공)", "market": "US"},
+        "UAL": {"shares": 0, "avg_price": 0.0, "name": "유나이티드 항공 (항공)", "market": "US"},
+        "MU": {"shares": 0, "avg_price": 0.0, "name": "마이크론 테크놀로지 (메모리반도체)", "market": "US"},
+        "ARM": {"shares": 0, "avg_price": 0.0, "name": "암 홀딩스 (반도체 설계)", "market": "US"}
     },
     "current_prices": {},
     "logs": []
@@ -31,13 +71,11 @@ def add_log(msg):
     if len(bot_status["logs"]) > 50:
         bot_status["logs"].pop()
 
-# 1. 웹 대시보드 서버 핸들러 (잔고 가감 파라미터 처리)
 class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_url = urllib.parse.urlparse(self.path)
         query_params = urllib.parse.parse_qs(parsed_url.query)
         
-        # 직접 입력한 경우 처리
         if 'new_cash' in query_params:
             try:
                 val = float(query_params['new_cash'][0])
@@ -49,7 +87,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
             except ValueError:
                 pass
                 
-        # 퀵 버튼(더하기/빼기)으로 요청된 경우 처리
         if 'adjust' in query_params:
             try:
                 val = float(query_params['adjust'][0])
@@ -79,8 +116,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 profit_rate = ((price - info["avg_price"]) / info["avg_price"]) * 100
                 color_style = "color: #ff5252;" if profit_rate > 0 else ("color: #448aff;" if profit_rate < 0 else "color: #ccc;")
                 profit_str = f"<span style='{color_style} font-weight:bold;'>{profit_rate:+.2f}%</span>"
+                
+                invested_principal_krw = info["shares"] * info["avg_price"] * USD_KRW
+                gross_sell_krw = holding_value_krw
+                tax_and_fees = gross_sell_krw * 0.0025 
+                net_sell_krw = gross_sell_krw - tax_and_fees
+                net_profit_krw = net_sell_krw - invested_principal_krw
+                net_color = "#ff5252" if net_profit_krw > 0 else ("#448aff" if net_profit_krw < 0 else "#ccc")
+                
+                realize_str = f"₩{net_sell_krw:,.0f}<br><small style='{net_color}'>순손익: ₩{net_profit_krw:+,.0f}</small>"
             else:
                 profit_str = "-"
+                realize_str = "-"
 
             holding_str = f"₩{holding_value_krw:,.0f} <small>(${price:,.2f} / 주)</small>"
 
@@ -91,11 +138,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     <td>{info['shares']} 주</td>
                     <td>{holding_str}</td>
                     <td>{profit_str}</td>
+                    <td>{realize_str}</td>
                 </tr>
             """
         
         total_assets_krw = bot_status["cash"] + total_stock_value_krw
-        
         total_profit_loss = total_assets_krw - bot_status["initial_capital"]
         total_profit_rate = (total_profit_loss / bot_status["initial_capital"]) * 100 if bot_status["initial_capital"] > 0 else 0
         total_color = "#ff5252" if total_profit_rate > 0 else ("#448aff" if total_profit_rate < 0 else "#fff")
@@ -105,11 +152,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         <html>
         <head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="10">
-            <title>Dark Mode AI Trading Bot</title>
+            <meta http-equiv="refresh" content="15">
+            <title>40-Stock AI Trading Bot</title>
             <style>
                 body {{ font-family: 'Arial', sans-serif; background-color: #121212; margin: 0; padding: 20px; color: #e0e0e0; }}
-                .container {{ max-width: 950px; margin: auto; background: #1e1e1e; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }}
+                .container {{ max-width: 1100px; margin: auto; background: #1e1e1e; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }}
                 h1 {{ color: #ffffff; text-align: center; margin-bottom: 20px; }}
                 .cards {{ display: flex; gap: 15px; margin-bottom: 25px; }}
                 .card {{ flex: 1; background: #2d2d2d; padding: 15px; border-radius: 8px; text-align: center; border-left: 5px solid #bb86fc; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
@@ -128,17 +175,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 .btn-minus:hover {{ background: #d32f2f; }}
 
                 table {{ width: 100%; border-collapse: collapse; margin-bottom: 25px; background: #2d2d2d; border-radius: 8px; overflow: hidden; }}
-                th, td {{ padding: 12px; text-align: center; border-bottom: 1px solid #383838; font-size: 14px; color: #e0e0e0; }}
+                th, td {{ padding: 12px; text-align: center; border-bottom: 1px solid #383838; font-size: 13px; color: #e0e0e0; }}
                 th {{ background-color: #333333; color: #ffffff; }}
-                .log-box {{ background: #121212; color: #00ffcc; padding: 15px; border-radius: 8px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.5; border: 1px solid #333; }}
+                .log-box {{ background: #121212; color: #00ffcc; padding: 15px; border-radius: 8px; height: 280px; overflow-y: auto; font-family: monospace; font-size: 13px; line-height: 1.5; border: 1px solid #333; }}
                 .footer {{ text-align: center; margin-top: 20px; color: #777; font-size: 12px; }}
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>🌙 다크 모드 AI 자동 매매 대시보드</h1>
+                <h1>🔥 40개 종목 대형 멀티 AI 자동 매매 대시보드</h1>
                 
-                <!-- 현금 잔고 조절 패널 -->
                 <div class="control-box">
                     <div class="control-row">
                         <form method="GET" style="display: flex; gap: 8px; align-items: center; margin: 0;">
@@ -169,7 +215,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     </div>
                 </div>
 
-                <h3>📊 포트폴리오 현황 및 수익률</h3>
+                <h3>📊 40종목 포트폴리오 및 매도 실수령액 분석</h3>
                 <table>
                     <tr>
                         <th>종목명</th>
@@ -177,16 +223,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         <th>보유 수량</th>
                         <th>평가 금액</th>
                         <th>수익률</th>
+                        <th>지금 매도시 실수령액 (세금·수수료 공제)</th>
                     </tr>
                     {portfolio_rows}
                 </table>
 
-                <h3>📈 실시간 AI 다크 매매 로그 (10초마다 자동 갱신)</h3>
+                <h3>📈 실시간 AI 다크 매매 로그 (자동 갱신)</h3>
                 <div class="log-box">
                     {"<br>".join(bot_status["logs"]) if bot_status["logs"] else "봇이 초기화 중입니다..."}
                 </div>
                 <div class="footer">
-                    Dark Mode Multi-Market Trading Bot Running 24/7
+                    40-Stock Multi-Market AI Trading Bot Running 24/7
                 </div>
             </div>
         </body>
@@ -202,11 +249,10 @@ def run_web_server():
 server_thread = threading.Thread(target=run_web_server)
 server_thread.daemon = True
 server_thread.start()
-add_log("잔고 조절 버튼이 포함된 다크 모드 서버가 열렸습니다!")
+add_log("40개 종목 대시보드 서버가 열렸습니다!")
 
-# 2. AI 자동 매매 봇 로직
 def run_trading_bot():
-    add_log("🤖 다크 모드 AI 자동 매매 봇이 시작되었습니다.")
+    add_log("🤖 40개 종목 AI 자동 매매 봇이 시작되었습니다.")
     
     while True:
         for ticker, info in bot_status["portfolio"].items():
@@ -257,9 +303,9 @@ def run_trading_bot():
             except Exception as e:
                 pass
                 
-            time.sleep(3)
+            time.sleep(1.5)  # 40개 종목 순회를 위해 딜레이 최적화
             
-        time.sleep(30)
+        time.sleep(15)
 
 bot_thread = threading.Thread(target=run_trading_bot)
 bot_thread.daemon = True
